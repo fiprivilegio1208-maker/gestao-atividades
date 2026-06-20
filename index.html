@@ -1,0 +1,2832 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Financeiro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        :root { --primary: #2c3e50; --secondary: #3498db; --success: #2ecc71; --warning: #f39c12; --danger: #e74c3c; }
+        body { background-color: #f5f7fa; color: #333; font-size: 13px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 10px; }
+        header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        header h1 { font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 15px; }
+        @media (max-width: 992px) { .grid { grid-template-columns: 1fr; } }
+        .card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .card h2 { color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; font-size: 1.1rem; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 12px; }
+        input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; }
+        .row { display: flex; gap: 10px; }
+        .row .form-group { flex: 1; }
+        .btn { padding: 8px 15px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-primary { background: var(--secondary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-block { width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+        th { background: var(--primary); color: white; text-align: left; padding: 10px 8px; }
+        td { padding: 10px 8px; border-bottom: 1px solid #eee; cursor: pointer; }
+        td:hover { background-color: #f9f9f9; }
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .a-vencer { background: rgba(243,156,18,0.1); color: var(--warning); }
+        .pago { background: rgba(46,204,113,0.1); color: var(--success); }
+        .vencido { background: rgba(231,76,60,0.1); color: var(--danger); }
+        .actions { display: flex; gap: 5px; }
+        .actions button { padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; }
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:15px; }
+        .modal-content { background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; }
+        .close-modal { float:right; font-size:20px; cursor:pointer; color:#999; }
+        .tipo-form { display:flex; gap:8px; margin-top:15px; }
+        .tipo-form input { flex:1; }
+        .tipo-list { max-height:200px; overflow-y:auto; margin:15px 0; border:1px solid #eee; border-radius:4px; padding:5px; }
+        .tipo-item { display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid #eee; font-size:12px; }
+        .header-actions { display:flex; gap:8px; margin-top:8px; }
+        .header-actions .btn { flex:1; }
+        .whatsapp-info { background:rgba(37,211,102,0.1); border-left:3px solid #25d366; padding:10px; border-radius:4px; margin-top:10px; font-size:11px; }
+        .report-option { text-align:center; padding:20px; border-radius:6px; cursor:pointer; background:rgba(46,204,113,0.05); border:2px solid var(--success); }
+        .report-option i { font-size:2rem; margin-bottom:8px; color:var(--success); }
+        .no-data { text-align:center; padding:30px 15px; color:#999; font-size:12px; }
+        .obs-cell { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        /* Barra de navegação do mês - MENOR */
+        .mes-navegacao {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .mes-navegacao h3 {
+            margin: 0;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .nav-arrow {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 0.8rem;
+        }
+        
+        .nav-arrow:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .nav-arrow.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .nav-arrow.disabled:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .whatsapp-btn {
+            background: #25d366 !important;
+            color: white !important;
+        }
+        
+        .whatsapp-btn:hover {
+            background: #1da851 !important;
+        }
+        
+        /* Subtotal do mês atual - atualizado automaticamente */
+        .subtotal-mes-card {
+            background: linear-gradient(135deg, #27ae60, #219653);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .subtotal-mes-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .subtotal-mes-values {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+        
+        .subtotal-mes-item {
+            text-align: center;
+            padding: 6px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 6px;
+        }
+        
+        .subtotal-mes-item .value {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin: 3px 0;
+        }
+        
+        .subtotal-mes-item .label {
+            font-size: 0.65rem;
+            opacity: 0.9;
+        }
+        
+        /* Modal de edição de conta - NOVO DESIGN */
+        .editar-conta-modal .modal-content {
+            max-width: 500px;
+            padding: 25px;
+        }
+        
+        .conta-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--secondary);
+        }
+        
+        .conta-info-item {
+            margin-bottom: 8px;
+            display: flex;
+        }
+        
+        .conta-info-item strong {
+            min-width: 100px;
+            color: var(--primary);
+        }
+        
+        .acoes-conta {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        
+        .acao-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .acao-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .acao-btn.excluir {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+        
+        .acao-btn.excluir:hover {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .acao-btn.editar {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+        
+        .acao-btn.editar:hover {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .acao-btn i {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        
+        .acao-btn span {
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        /* Status buttons no modal de edição */
+        .status-actions {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .status-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .status-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .status-btn.avencer { border-color: var(--warning); color: var(--warning); }
+        .status-btn.pago { border-color: var(--success); color: var(--success); }
+        .status-btn.vencido { border-color: var(--danger); color: var(--danger); }
+        .status-btn.selecionado { background-color: currentColor; color: white; }
+        .status-btn.selecionado span { color: white; }
+        
+        .editar-opcoes {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .editar-opcao {
+            padding: 15px;
+            border: 2px solid #eee;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .editar-opcao:hover {
+            border-color: var(--secondary);
+            background: rgba(52, 152, 219, 0.05);
+        }
+        
+        .editar-opcao.selecionada {
+            border-color: var(--success);
+            background: rgba(46, 204, 113, 0.1);
+        }
+        
+        .editar-opcao h4 {
+            margin-bottom: 5px;
+            color: var(--primary);
+        }
+        
+        .editar-opcao p {
+            font-size: 11px;
+            color: #666;
+            margin: 0;
+        }
+        
+        /* Nova organização do formulário - COM NOVO VISUAL PARA NOVA CONTA */
+        .nova-conta-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 10px 15px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        
+        .nova-conta-header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        
+        .nova-conta-header i {
+            transition: transform 0.3s;
+        }
+        
+        .nova-conta-header.expandido i {
+            transform: rotate(180deg);
+        }
+        
+        .formulario-conta {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+        
+        .formulario-conta.expandido {
+            max-height: 600px;
+            padding-top: 15px;
+        }
+        
+        .disquete-salvar {
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin: 15px auto;
+            transition: all 0.3s;
+            box-shadow: 0 3px 10px rgba(46, 204, 113, 0.3);
+        }
+        
+        .disquete-salvar:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+        }
+        
+        /* Nova disposição dos campos */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .form-grid .form-group.full {
+            grid-column: span 2;
+        }
+        
+        .status-radios {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+        }
+        
+        .status-radios div {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        
+        .status-radios label {
+            margin-bottom: 0;
+            font-size: 11px;
+        }
+        
+        .tipo-select-container {
+            grid-column: span 2;
+        }
+        
+        /* NOVOS ESTILOS PARA FILTROS */
+        .filtros-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+            justify-content: center;
+        }
+        
+        .filtro-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 11px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+        
+        .filtro-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+        
+        .filtro-btn.primeira {
+            border-color: #3498db;
+            color: #3498db;
+        }
+        
+        .filtro-btn.segunda {
+            border-color: #9b59b6;
+            color: #9b59b6;
+        }
+        
+        .filtro-btn.pago {
+            border-color: var(--success);
+            color: var(--success);
+        }
+        
+        .filtro-btn.avencer {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+        
+        .filtro-btn.vencido {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+        
+        .filtro-btn.ativo {
+            background-color: currentColor;
+            color: white !important;
+        }
+        
+        .filtro-btn.limpar {
+            border-color: #7f8c8d;
+            color: #7f8c8d;
+        }
+        
+        .info-filtro-ativo {
+            background: rgba(52, 152, 219, 0.1);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 3px solid #3498db;
+        }
+        
+        .info-filtro-ativo .limpar-filtro {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        
+        .filtros-titulo {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        
+        .filtros-grupo {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .login-screen { position: fixed; inset: 0; background: linear-gradient(135deg, #0f172a, #1e293b, #3498db); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 18px; }
+        .login-card { width: 100%; max-width: 420px; background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+        .login-card h2 { color: var(--primary); margin-bottom: 8px; text-align:center; }
+        .login-card p { color:#666; font-size:12px; text-align:center; margin-bottom:18px; }
+        .login-error { color: var(--danger); font-size:12px; font-weight:700; min-height:18px; margin:8px 0; }
+        .btn-login { width: 100%; justify-content:center; padding: 11px; font-weight:700; border-radius:8px; }
+        .sync-badge { margin-top:8px; font-size:11px; opacity:.92; display:flex; align-items:center; gap:6px; }
+
+        .filtro-btn.todos-vencidos {
+            border-color: #7c2d12;
+            color: #7c2d12;
+            font-weight: 700;
+        }
+        .filtro-btn.todos-vencidos.ativo {
+            background: #7c2d12 !important;
+            color: #fff !important;
+        }
+        .filtro-btn.ativo span,
+        .filtro-btn.ativo i {
+            color: #fff !important;
+        }
+
+
+        body.dark-mode {
+            background-color: #0b1220;
+            color: #e5e7eb;
+        }
+        body.dark-mode .card,
+        body.dark-mode .modal-content,
+        body.dark-mode .login-card {
+            background: #111827;
+            color: #e5e7eb;
+            border: 1px solid #334155;
+        }
+        body.dark-mode .card h2,
+        body.dark-mode label,
+        body.dark-mode .conta-info-item strong,
+        body.dark-mode .editar-opcao h4,
+        body.dark-mode .filtros-titulo {
+            color: #f8fafc;
+        }
+        body.dark-mode input,
+        body.dark-mode select,
+        body.dark-mode textarea {
+            background: #0f172a;
+            color: #f8fafc;
+            border-color: #334155;
+        }
+        body.dark-mode table {
+            color: #e5e7eb;
+        }
+        body.dark-mode td {
+            border-bottom-color: #334155;
+        }
+        body.dark-mode td:hover {
+            background-color: #1e293b;
+        }
+        body.dark-mode .conta-info,
+        body.dark-mode .editar-opcao,
+        body.dark-mode .tipo-list,
+        body.dark-mode .tipo-item {
+            background: #0f172a;
+            border-color: #334155;
+            color: #e5e7eb;
+        }
+        body.dark-mode .filtro-btn {
+            background: #111827;
+            color: #cbd5e1;
+            border-color: #334155;
+        }
+        body.dark-mode .filtro-btn.limpar {
+            color: #cbd5e1;
+            border-color: #64748b;
+        }
+        body.dark-mode .info-filtro-ativo {
+            background: rgba(56,189,248,.12);
+            color: #e5e7eb;
+        }
+        .theme-toggle-btn {
+            background: #111827 !important;
+            color: #fff !important;
+            min-width: 44px;
+            justify-content: center;
+        }
+        body.dark-mode .theme-toggle-btn {
+            background: #f59e0b !important;
+            color: #111827 !important;
+        }
+
+
+        .top-theme-btn {
+            border-radius: 50% !important;
+            width: 38px !important;
+            height: 38px !important;
+            padding: 0 !important;
+            flex: 0 0 auto !important;
+            font-size: 16px !important;
+            box-shadow: 0 3px 10px rgba(0,0,0,.18);
+        }
+        .busca-geral-filtro {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: min(520px, 100%);
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 7px 10px;
+        }
+        .busca-geral-filtro i {
+            color: #64748b;
+            flex: 0 0 auto;
+        }
+        .busca-geral-filtro input {
+            border: none !important;
+            outline: none !important;
+            padding: 5px !important;
+            font-size: 12px;
+            background: transparent !important;
+        }
+        body.dark-mode .busca-geral-filtro {
+            background: #0f172a;
+            border-color: #334155;
+        }
+        body.dark-mode .busca-geral-filtro i {
+            color: #cbd5e1;
+        }
+body.dark-mode
+
+.header-theme-btn{
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    border:none;
+    background:#1e88e5;
+    color:#fff;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    margin-left:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+body.dark-mode .header-theme-btn{
+    background:#f59e0b;
+    color:#111827;
+}
+
+
+        /* Ajuste final topo: cartões menores e Sair mais dentro do cabeçalho */
+        header {
+            padding: 12px !important;
+        }
+
+        .header-actions {
+            gap: 6px !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+            padding-right: 8px !important;
+        }
+
+        .header-actions .btn {
+            flex: 0 1 auto !important;
+            min-width: 0 !important;
+            height: 34px !important;
+            padding: 6px 10px !important;
+            font-size: 11px !important;
+            border-radius: 5px !important;
+            white-space: nowrap !important;
+        }
+
+
+        .header-theme-btn {
+            width: 30px !important;
+            height: 30px !important;
+            font-size: 14px !important;
+            margin-left: 7px !important;
+        }
+
+        @media (max-width: 700px) {
+            .header-actions {
+                flex-wrap: wrap !important;
+                padding-right: 0 !important;
+            }
+
+            .header-actions .btn {
+                height: 32px !important;
+                padding: 5px 8px !important;
+                font-size: 10px !important;
+            }
+
+            #logoutBtn {
+                transform: translateX(0);
+            }
+        }
+
+
+        body.dark-mode
+
+
+
+
+        /* Ícones Sair e Lua colados ao lado do botão Limpar Todos */
+        .header-actions {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .header-actions #clearBtn {
+            margin-right: 2px !important;
+        }
+
+        .header-icon-btn {
+            background: none !important;
+            border: none !important;
+            color: #fff !important;
+            font-size: 20px !important;
+            cursor: pointer !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 22px !important;
+            height: 34px !important;
+            min-width: 22px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex: 0 0 auto !important;
+            transform: none !important;
+        }
+
+        .header-icon-btn:hover {
+            transform: scale(1.12) !important;
+        }
+
+        #logoutBtn {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            min-width: 22px !important;
+        }
+
+        #themeToggleBtn {
+            margin-left: 1px !important;
+        }
+
+</style>
+</head>
+<body>
+
+    <div class="login-screen" id="loginScreen" style="display:none;">
+        <div class="login-card">
+            <h2><i class="fas fa-lock"></i> Acesso Restrito</h2>
+            <p>Entre com o e-mail e senha cadastrados no Supabase para acessar seu financeiro.</p>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">E-mail</label>
+                    <input type="email" id="loginEmail" autocomplete="username" required placeholder="seu e-mail">
+                </div>
+                <div class="form-group">
+                    <label for="loginSenha">Senha</label>
+                    <input type="password" id="loginSenha" autocomplete="current-password" required placeholder="sua senha">
+                </div>
+                <div id="loginError" class="login-error"></div>
+                <button type="submit" class="btn btn-primary btn-login"><i class="fas fa-right-to-bracket"></i> Entrar</button>
+            </form>
+        </div>
+    </div>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-wallet"></i> Controle Financeiro</h1>
+            <div class="header-actions">
+                <button class="btn btn-info" id="gerarRelatorioBtn"><i class="fas fa-file-image"></i> Relatório</button>
+                <button class="btn btn-warning" id="gerenciarTiposHeaderBtn"><i class="fas fa-cog"></i> Tipos</button>
+                <button class="btn btn-success" id="exportBtn"><i class="fas fa-download"></i> Exportar</button>
+                <button class="btn btn-danger" id="clearBtn"><i class="fas fa-trash-alt"></i> Limpar Todos</button>
+                <button id="logoutBtn" title="Sair" class="header-icon-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+                <button id="themeToggleBtn" title="Tema Claro/Escuro" class="header-icon-btn">
+                    <i class="fas fa-moon"></i>
+                </button>
+                
+            </div>
+        </header>
+
+        <div class="grid">
+            <div>
+                <div class="nova-conta-header" id="novaContaHeader">
+                    <div>
+                        <i class="fas fa-plus-circle"></i>
+                        <strong>Nova Conta</strong>
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                
+                <div class="card" id="formularioContainer" style="display: none;">
+                    <div class="formulario-conta" id="formularioConta">
+                        <form id="contaForm">
+                            <div class="form-grid">
+                                <div class="form-group full tipo-select-container">
+                                    <label for="tipoConta">Tipo *</label>
+                                    <div style="display:flex;gap:5px;">
+                                        <select id="tipoConta" required style="flex:1;">
+                                            <option value="">Selecione</option>
+                                        </select>
+                                        <button type="button" class="btn btn-warning" id="gerenciarTiposBtn" style="padding:8px;"><i class="fas fa-cog"></i></button>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="dataVencimento">Vencimento *</label>
+                                    <input type="date" id="dataVencimento" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="valor">Valor (R$) *</label>
+                                    <input type="number" id="valor" step="0.01" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="parcelas">Parcelas</label>
+                                    <input type="number" id="parcelas" min="1" value="1" placeholder="Quantidade de parcelas">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Status *</label>
+                                    <div class="status-radios">
+                                        <div><input type="radio" id="statusAvencer" name="status" value="a-vencer" checked><label for="statusAvencer">A Vencer</label></div>
+                                        <div><input type="radio" id="statusPago" name="status" value="pago"><label for="statusPago">Pago</label></div>
+                                        <div><input type="radio" id="statusVencido" name="status" value="vencido"><label for="statusVencido">Vencido</label></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group full">
+                                    <label for="observacao">Observação</label>
+                                    <textarea id="observacao" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="disquete-salvar" id="salvarContaBtn">
+                        <i class="fas fa-save"></i>
+                    </div>
+                </div>
+                
+                <div class="subtotal-mes-card">
+                    <div class="subtotal-mes-header">
+                        <span><i class="fas fa-chart-pie"></i> Subtotal do Mês</span>
+                        <span id="mesAtualNome">Janeiro 2024</span>
+                    </div>
+                    <div class="subtotal-mes-values">
+                        <div class="subtotal-mes-item">
+                            <div class="label">Total</div>
+                            <div class="value" id="subtotalMesTotal">R$ 0</div>
+                        </div>
+                        <div class="subtotal-mes-item">
+                            <div class="label">A Vencer</div>
+                            <div class="value" id="subtotalMesAvencer">R$ 0</div>
+                        </div>
+                        <div class="subtotal-mes-item">
+                            <div class="label">Pago</div>
+                            <div class="value" id="subtotalMesPago">R$ 0</div>
+                        </div>
+                        <div class="subtotal-mes-item">
+                            <div class="label">Vencido</div>
+                            <div class="value" id="subtotalMesVencido">R$ 0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <div class="card">
+                    <h2><i class="fas fa-list"></i> Contas por Mês</h2>
+                    <div id="contasPorMes"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="tiposModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeTiposModal">&times;</span>
+            <h3><i class="fas fa-tags"></i> Tipos de Conta</h3>
+            <div class="tipo-form">
+                <input type="text" id="novoTipo" placeholder="Novo tipo">
+                <button class="btn btn-success" id="addTipoBtn"><i class="fas fa-plus"></i></button>
+            </div>
+            <div class="tipo-list" id="tiposList"></div>
+            <button class="btn btn-primary btn-block" id="closeTiposBtn"><i class="fas fa-check"></i> Concluído</button>
+        </div>
+    </div>
+
+    <div class="modal" id="reportModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeReportModal">&times;</span>
+            <h3><i class="fas fa-file-image"></i> Gerar Relatório JPG</h3>
+            <div class="whatsapp-info">
+                <i class="fab fa-whatsapp"></i> 
+                <strong>Enviar para: +55 (11) 9 6193-7763</strong><br>
+                <small>O relatório será convertido para JPG e enviar como anexo</small>
+            </div>
+            <div class="report-option" id="generateJPG">
+                <i class="fas fa-file-image"></i>
+                <h4>Gerar Relatório JPG</h4>
+                <p>Clique para gerar imagem JPG e enviar no WhatsApp</p>
+            </div>
+            <div id="reportPreview" style="display:none; margin-top:15px;"></div>
+            <div id="reportActions" style="display:none; margin-top:10px; gap:8px; display:flex;">
+                <button class="btn whatsapp-btn" id="sendWhatsAppBtn">
+                    <i class="fab fa-whatsapp"></i> Enviar no WhatsApp
+                </button>
+                <button class="btn btn-primary" id="downloadReportBtn">
+                    <i class="fas fa-download"></i> Baixar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal editar-conta-modal" id="editarContaModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeEditarModal">&times;</span>
+            <h3><i class="fas fa-edit"></i> Gerenciar Conta</h3>
+            
+            <div class="conta-info" id="editarContaInfo">
+            </div>
+            
+            <div class="status-actions">
+                <button class="status-btn avencer" onclick="alterarStatus('a-vencer')">
+                    <i class="fas fa-clock"></i><br>
+                    <span>A Vencer</span>
+                </button>
+                <button class="status-btn pago" onclick="alterarStatus('pago')">
+                    <i class="fas fa-check-circle"></i><br>
+                    <span>Pago</span>
+                </button>
+                <button class="status-btn vencido" onclick="alterarStatus('vencido')">
+                    <i class="fas fa-exclamation-circle"></i><br>
+                    <span>Vencido</span>
+                </button>
+            </div>
+            
+            <div class="acoes-conta">
+                <div class="acao-btn excluir" onclick="abrirModalExclusao()">
+                    <i class="fas fa-trash"></i>
+                    <span>Excluir</span>
+                </div>
+                <div class="acao-btn editar" onclick="abrirEditarDetalhesModal()">
+                    <i class="fas fa-edit"></i>
+                    <span>Editar Detalhes</span>
+                </div>
+            </div>
+            
+            <input type="hidden" id="editarContaId">
+            <input type="hidden" id="editarStatusAtual">
+        </div>
+    </div>
+
+    <div class="modal" id="excluirContaConfirmModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeExcluirConfirmModal">&times;</span>
+            <h3><i class="fas fa-exclamation-triangle"></i> Confirmar Exclusão</h3>
+            <div id="excluirContaInfo" style="margin: 15px 0; padding: 15px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
+            </div>
+            <div id="opcoesExclusao" style="display: none;">
+                <p style="margin-bottom: 15px; font-size: 12px; color: #666;">
+                    Excluir está ou todas as parcelas?
+                </p>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn btn-danger" id="excluirTodasBtn" style="flex: 1;">
+                        <i class="fas fa-layer-group"></i> Todas as Parcelas
+                    </button>
+                    <button class="btn btn-warning" id="excluirEstaBtn" style="flex: 1;">
+                        <i class="fas fa-file-invoice"></i> Apenas Esta
+                    </button>
+                </div>
+            </div>
+            <div id="exclusaoUnica" style="display: none;">
+                <p style="margin-bottom: 15px; font-size: 12px; color: #666;">
+                    Tem certeza que deseja excluir esta conta?
+                </p>
+                <button class="btn btn-danger btn-block" id="excluirContaUnicaBtn">
+                    <i class="fas fa-trash"></i> Sim, Excluir
+                </button>
+            </div>
+            <button class="btn btn-secondary btn-block" id="cancelarExclusaoBtn" style="margin-top: 10px;">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+        </div>
+    </div>
+
+    <div class="modal editar-conta-modal" id="editarDetalhesModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeEditarDetalhesModal">&times;</span>
+            <h3><i class="fas fa-edit"></i> Editar Detalhes da Conta</h3>
+            <form id="editarDetalhesForm">
+                <div class="form-group">
+                    <label for="editarTipoConta">Tipo *</label>
+                    <div style="display:flex;gap:5px;">
+                        <select id="editarTipoConta" required style="flex:1;">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="form-group"><label for="editarDataVencimento">Vencimento *</label><input type="date" id="editarDataVencimento" required></div>
+                    <div class="form-group"><label for="editarValor">Valor (R$) *</label><input type="number" id="editarValor" step="0.01" required></div>
+                </div>
+                <div class="form-group">
+                    <label for="editarParcelas">Parcelas</label>
+                    <input type="number" id="editarParcelas" min="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Status *</label>
+                    <div style="display:flex; gap:8px;">
+                        <div><input type="radio" id="editarStatusAvencer" name="editarStatus" value="a-vencer"><label for="editarStatusAvencer" style="display:inline;">A Vencer</label></div>
+                        <div><input type="radio" id="editarStatusPago" name="editarStatus" value="pago"><label for="editarStatusPago" style="display:inline;">Pago</label></div>
+                        <div><input type="radio" id="editarStatusVencido" name="editarStatus" value="vencido"><label for="editarStatusVencido" style="display:inline;">Vencido</label></div>
+                    </div>
+                </div>
+                <div class="form-group"><label for="editarObservacao">Observação</label><textarea id="editarObservacao" rows="2"></textarea></div>
+                
+                <div class="editar-opcoes" id="editarOpcoes">
+                    <div class="editar-opcao" data-opcao="apenas">
+                        <h4><i class="fas fa-file-invoice"></i> Apenas esta conta</h4>
+                        <p>Salva apenas as alterações nesta conta específica</p>
+                    </div>
+                    <div class="editar-opcao" data-opcao="todas">
+                        <h4><i class="fas fa-layer-group"></i> Todas as parcelas</h4>
+                        <p>Aplica as alterações em todas as parcelas do parcelamento</p>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="editarOpcaoSelecionada" value="apenas">
+                <input type="hidden" id="editarContaDetalhesId">
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" id="cancelarEdicaoDetalhesBtn" style="flex: 1;">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success" style="flex: 1;">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div class="modal" id="exportarModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeExportarModal">&times;</span>
+            <h3><i class="fas fa-download"></i> Exportar Dados</h3>
+            <p style="font-size:12px;color:#666;margin:12px 0;">Escolha o formato para baixar os lançamentos:</p>
+            <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px;">
+                <button class="btn btn-primary btn-block" id="exportJsonBtn"><i class="fas fa-code"></i> Baixar JSON</button>
+                <button class="btn btn-success btn-block" id="exportCsvBtn"><i class="fas fa-file-csv"></i> Baixar CSV</button>
+                <button class="btn btn-warning btn-block" id="exportXlsxBtn"><i class="fas fa-file-excel"></i> Baixar XLSX</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- NOVO MODAL DE CONFIRMAÇÃO PARA LIMPAR TODOS OS DADOS -->
+    <div class="modal" id="limparTodosConfirmModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeLimparTodosModal">&times;</span>
+            <h3><i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i> Atenção!</h3>
+            <div style="margin: 20px 0; padding: 15px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107; text-align: center;">
+                <i class="fas fa-trash-alt" style="font-size: 3rem; color: #e74c3c; margin-bottom: 10px;"></i>
+                <p style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">Deseja realmente apagar TODOS os lançamentos?</p>
+                <p style="font-size: 12px; color: #666;">Esta ação não pode ser desfeita e todos os dados serão perdidos.</p>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-secondary" id="cancelarLimparTodosBtn" style="flex: 1;">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button class="btn btn-danger" id="confirmarLimparTodosBtn" style="flex: 1;">
+                    <i class="fas fa-trash-alt"></i> Sim, Apagar Tudo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let contas = [], tiposConta = [], currentReportData = null, currentReportBlob = null;
+        let mesAtualIndex = 0;
+        let mesesComContas = [];
+        let filtroQuinzena = null; // null, 'primeira' ou 'segunda'
+        let filtroStatus = []; // múltiplo: ['pago','a-vencer','vencido']
+        let filtroTodosVencidos = false; // mostra vencidos de todos os meses
+        let filtroBuscaGeral = ''; // busca conta em todos os meses
+        const tiposPadrao = ["Aluguel","Água","Luz","Internet","Telefone","Cartão","Supermercado","Transporte","Saúde","Outros"];
+        const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+        // ======================== SUPABASE ONLINE ========================
+        const SUPABASE_URL = 'https://pwduwwxwwodxixqmqgho.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable__V1fvXBe_rMMWncfkkwmHQ_Goh8kVOW';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const TABELA_CONTAS = 'Contas';
+
+        function mostrarLogin(mostrar) {
+            const tela = document.getElementById('loginScreen');
+            if (tela) tela.style.display = mostrar ? 'flex' : 'none';
+        }
+
+        function contaParaLinha(conta) {
+            return {
+                id: Number(conta.id),
+                id_base: conta.idBase === undefined || conta.idBase === null || conta.idBase === '' ? null : Number(conta.idBase),
+                tipo: conta.tipo || '',
+                data: conta.data || null,
+                valor: Number(conta.valor || 0),
+                parcelas: Number(conta.parcelas || 1),
+                parcela_atual: Number(conta.parcelaAtual || 1),
+                status: conta.status || 'a-vencer',
+                obs: conta.obs || null
+            };
+        }
+
+        function linhaParaConta(row) {
+            return {
+                id: Number(row.id),
+                idBase: row.id_base === undefined || row.id_base === null ? null : Number(row.id_base),
+                tipo: row.tipo || '',
+                data: row.data || '',
+                valor: Number(row.valor || 0),
+                parcelas: Number(row.parcelas || 1),
+                parcelaAtual: Number(row.parcela_atual || 1),
+                status: row.status || 'a-vencer',
+                obs: row.obs || ''
+            };
+        }
+
+        async function verificarLoginInicial() {
+            const { data } = await supabaseClient.auth.getSession();
+            const logado = !!data.session;
+            mostrarLogin(!logado);
+            return logado;
+        }
+
+        function setupAuth() {
+            const form = document.getElementById('loginForm');
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (form) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('loginEmail').value.trim();
+                    const password = document.getElementById('loginSenha').value;
+                    const erro = document.getElementById('loginError');
+                    erro.textContent = 'Entrando...';
+                    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                    if (error) {
+                        erro.textContent = 'Login ou senha inválido. Confira o usuário criado em Authentication > Users.';
+                        return;
+                    }
+                    erro.textContent = '';
+                    mostrarLogin(false);
+                    await carregarDados();
+                });
+            }
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async () => {
+                    await supabaseClient.auth.signOut();
+                    mostrarLogin(true);
+                });
+            }
+        }
+
+        function atualizarTiposComBaseNasContas() {
+            const tiposDaBase = contas.map(c => (c.tipo || '').split(' (')[0].trim()).filter(Boolean);
+            const tiposLocais = JSON.parse(localStorage.getItem('controleTipos') || '[]');
+            tiposConta = [...new Set([...tiposPadrao, ...tiposLocais, ...tiposDaBase])].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+        }
+
+        let salvandoOnline = false;
+        async function sincronizarSupabase() {
+            if (salvandoOnline) return;
+            salvandoOnline = true;
+            try {
+                const { data: sessao } = await supabaseClient.auth.getSession();
+                if (!sessao.session) { mostrarLogin(true); return; }
+
+                const linhas = contas.map(contaParaLinha);
+                if (linhas.length > 0) {
+                    const { error: upsertError } = await supabaseClient
+                        .from(TABELA_CONTAS)
+                        .upsert(linhas, { onConflict: 'id' });
+                    if (upsertError) throw upsertError;
+                }
+
+                const idsLocais = contas.map(c => Number(c.id));
+                const { data: remotas, error: selectError } = await supabaseClient
+                    .from(TABELA_CONTAS)
+                    .select('id');
+                if (selectError) throw selectError;
+
+                const idsParaExcluir = (remotas || []).map(r => Number(r.id)).filter(id => !idsLocais.includes(id));
+                if (idsParaExcluir.length > 0) {
+                    const { error: deleteError } = await supabaseClient
+                        .from(TABELA_CONTAS)
+                        .delete()
+                        .in('id', idsParaExcluir);
+                    if (deleteError) throw deleteError;
+                }
+            } catch (e) {
+                console.error('Erro ao sincronizar Supabase:', e);
+                alert('Erro ao salvar online no Supabase: ' + e.message);
+            } finally {
+                salvandoOnline = false;
+            }
+        }
+        
+        let formularioExpandido = false;
+
+
+        function aplicarTemaSalvo() {
+            const tema = localStorage.getItem('controleFinanceiroTema') || 'claro';
+            document.body.classList.toggle('dark-mode', tema === 'escuro');
+            atualizarIconeTema();
+        }
+
+        function alternarTema() {
+            const escuro = !document.body.classList.contains('dark-mode');
+            document.body.classList.toggle('dark-mode', escuro);
+            localStorage.setItem('controleFinanceiroTema', escuro ? 'escuro' : 'claro');
+            atualizarIconeTema();
+        }
+
+        function atualizarIconeTema() {
+            const btn = document.getElementById('themeToggleBtn');
+            if (!btn) return;
+            const escuro = document.body.classList.contains('dark-mode');
+            btn.innerHTML = escuro ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            btn.title = escuro ? 'Tema claro' : 'Tema escuro';
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            aplicarTemaSalvo();
+            const hoje = new Date();
+            const hojeFormatado = hoje.getFullYear() + '-' + 
+                                 String(hoje.getMonth() + 1).padStart(2, '0') + '-' + 
+                                 String(hoje.getDate()).padStart(2, '0');
+            document.getElementById('dataVencimento').value = hojeFormatado;
+            
+            setupAuth();
+            verificarLoginInicial().then(logado => { if (logado) carregarDados(); });
+            
+            document.getElementById('novaContaHeader').addEventListener('click', toggleFormularioConta);
+            
+            document.getElementById('salvarContaBtn').addEventListener('click', salvarConta);
+            
+            document.getElementById('contaForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                salvarConta();
+            });
+            
+            document.getElementById('gerenciarTiposBtn').addEventListener('click', abrirModalTipos);
+            document.getElementById('gerenciarTiposHeaderBtn').addEventListener('click', abrirModalTipos);
+            document.getElementById('exportBtn').addEventListener('click', abrirModalExportar);
+            document.getElementById('gerarRelatorioBtn').addEventListener('click', abrirModalRelatorio);
+            document.getElementById('clearBtn').addEventListener('click', abrirModalLimparTodos);
+            document.getElementById('themeToggleBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                alternarTema();
+            });
+            document.getElementById('closeExportarModal').addEventListener('click', () => document.getElementById('exportarModal').style.display = 'none');
+            document.getElementById('exportJsonBtn').addEventListener('click', () => exportarDadosFormato('json'));
+            document.getElementById('exportCsvBtn').addEventListener('click', () => exportarDadosFormato('csv'));
+            document.getElementById('exportXlsxBtn').addEventListener('click', () => exportarDadosFormato('xlsx'));
+            
+            document.getElementById('addTipoBtn').addEventListener('click', adicionarTipo);
+            document.getElementById('closeTiposBtn').addEventListener('click', () => document.getElementById('tiposModal').style.display = 'none');
+            document.getElementById('closeTiposModal').addEventListener('click', () => document.getElementById('tiposModal').style.display = 'none');
+            
+            document.getElementById('generateJPG').addEventListener('click', gerarRelatorioJPG);
+            document.getElementById('closeReportModal').addEventListener('click', () => document.getElementById('reportModal').style.display = 'none');
+            document.getElementById('sendWhatsAppBtn').addEventListener('click', enviarWhatsApp);
+            document.getElementById('downloadReportBtn').addEventListener('click', baixarRelatorio);
+            
+            document.getElementById('closeEditarModal').addEventListener('click', () => document.getElementById('editarContaModal').style.display = 'none');
+            document.getElementById('closeEditarDetalhesModal').addEventListener('click', () => document.getElementById('editarDetalhesModal').style.display = 'none');
+            document.getElementById('cancelarEdicaoDetalhesBtn').addEventListener('click', () => document.getElementById('editarDetalhesModal').style.display = 'none');
+            document.getElementById('editarDetalhesForm').addEventListener('submit', salvarEdicaoDetalhes);
+            
+            document.getElementById('closeExcluirConfirmModal').addEventListener('click', () => document.getElementById('excluirContaConfirmModal').style.display = 'none');
+            document.getElementById('cancelarExclusaoBtn').addEventListener('click', () => document.getElementById('excluirContaConfirmModal').style.display = 'none');
+            document.getElementById('excluirTodasBtn').addEventListener('click', () => excluirConta(true));
+            document.getElementById('excluirEstaBtn').addEventListener('click', () => excluirConta(false));
+            document.getElementById('excluirContaUnicaBtn').addEventListener('click', () => excluirConta(false));
+            
+            // NOVOS EVENTOS PARA MODAL DE LIMPAR TODOS
+            document.getElementById('closeLimparTodosModal').addEventListener('click', () => document.getElementById('limparTodosConfirmModal').style.display = 'none');
+            document.getElementById('cancelarLimparTodosBtn').addEventListener('click', () => document.getElementById('limparTodosConfirmModal').style.display = 'none');
+            document.getElementById('confirmarLimparTodosBtn').addEventListener('click', confirmarLimparTodos);
+            
+            document.querySelectorAll('.editar-opcao').forEach(opcao => {
+                opcao.addEventListener('click', function() {
+                    document.querySelectorAll('.editar-opcao').forEach(o => o.classList.remove('selecionada'));
+                    this.classList.add('selecionada');
+                    document.getElementById('editarOpcaoSelecionada').value = this.dataset.opcao;
+                });
+            });
+            
+            window.addEventListener('click', (e) => {
+                if (e.target.id === 'tiposModal') document.getElementById('tiposModal').style.display = 'none';
+                if (e.target.id === 'reportModal') document.getElementById('reportModal').style.display = 'none';
+                if (e.target.id === 'editarContaModal') document.getElementById('editarContaModal').style.display = 'none';
+                if (e.target.id === 'editarDetalhesModal') document.getElementById('editarDetalhesModal').style.display = 'none';
+                if (e.target.id === 'excluirContaConfirmModal') document.getElementById('excluirContaConfirmModal').style.display = 'none';
+                if (e.target.id === 'limparTodosConfirmModal') document.getElementById('limparTodosConfirmModal').style.display = 'none';
+                if (e.target.id === 'exportarModal') document.getElementById('exportarModal').style.display = 'none';
+            });
+        });
+
+        function toggleFormularioConta() {
+            formularioExpandido = !formularioExpandido;
+            const formularioContainer = document.getElementById('formularioContainer');
+            const formularioConta = document.getElementById('formularioConta');
+            const header = document.getElementById('novaContaHeader');
+            
+            if (formularioExpandido) {
+                formularioContainer.style.display = 'block';
+                setTimeout(() => {
+                    formularioConta.classList.add('expandido');
+                }, 10);
+                header.classList.add('expandido');
+            } else {
+                formularioConta.classList.remove('expandido');
+                setTimeout(() => {
+                    formularioContainer.style.display = 'none';
+                }, 500);
+                header.classList.remove('expandido');
+            }
+        }
+
+        async function carregarDados() {
+            const { data: sessao } = await supabaseClient.auth.getSession();
+            if (!sessao.session) {
+                mostrarLogin(true);
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from(TABELA_CONTAS)
+                .select('*')
+                .order('data', { ascending: true });
+
+            if (error) {
+                console.error('Erro ao carregar Supabase:', error);
+                alert('Não consegui carregar a tabela Contas do Supabase: ' + error.message);
+                const contasSalvas = localStorage.getItem('controleContas');
+                contas = contasSalvas ? JSON.parse(contasSalvas) : [];
+            } else {
+                contas = (data || []).map(linhaParaConta);
+                localStorage.setItem('controleContas', JSON.stringify(contas));
+            }
+
+            atualizarTiposComBaseNasContas();
+            localStorage.setItem('controleTipos', JSON.stringify(tiposConta));
+            atualizarSelectTipos();
+            listarContasPorMes();
+            atualizarSubtotalMes();
+            setTimeout(() => { irParaMesAtual(); }, 100);
+        }
+
+        // NOVA FUNÇÃO: Ir para o mês atual
+        function irParaMesAtual() {
+            const hoje = new Date();
+            const mesAtual = hoje.getMonth(); // 0-indexed
+            const anoAtual = hoje.getFullYear();
+            const chaveMesAtual = `${anoAtual}-${mesAtual}`;
+            
+            const index = mesesComContas.findIndex(chave => chave === chaveMesAtual);
+            
+            if (index !== -1) {
+                mesAtualIndex = index;
+                mostrarMesAtual();
+            } else {
+                // Se não há contas no mês atual, tentar encontrar o mês mais próximo
+                if (mesesComContas.length > 0) {
+                    // Ordenar por data e encontrar o mais próximo do atual
+                    const mesesOrdenados = [...mesesComContas].sort((a, b) => {
+                        const [anoA, mesA] = a.split('-').map(Number);
+                        const [anoB, mesB] = b.split('-').map(Number);
+                        return anoA !== anoB ? anoA - anoB : mesA - mesB;
+                    });
+                    
+                    let indexProximo = 0;
+                    let menorDiferenca = Infinity;
+                    
+                    mesesOrdenados.forEach((chave, idx) => {
+                        const [ano, mes] = chave.split('-').map(Number);
+                        const diferenca = Math.abs(ano - anoAtual) * 12 + Math.abs(mes - mesAtual);
+                        
+                        if (diferenca < menorDiferenca) {
+                            menorDiferenca = diferenca;
+                            indexProximo = idx;
+                        }
+                    });
+                    
+                    mesAtualIndex = indexProximo;
+                }
+            }
+            
+            mostrarMesAtual();
+        }
+
+        function salvarDados() {
+            localStorage.setItem('controleContas', JSON.stringify(contas));
+            localStorage.setItem('controleTipos', JSON.stringify(tiposConta));
+            sincronizarSupabase();
+        }
+
+        function atualizarSelectTipos() {
+            const select = document.getElementById('tipoConta');
+            const selectEditar = document.getElementById('editarTipoConta');
+            select.innerHTML = '<option value="">Selecione</option>';
+            selectEditar.innerHTML = '<option value="">Selecione</option>';
+            
+            tiposConta.forEach(tipo => {
+                select.innerHTML += `<option value="${tipo}">${tipo}</option>`;
+                selectEditar.innerHTML += `<option value="${tipo}">${tipo}</option>`;
+            });
+        }
+
+        function salvarConta() {
+            const tipo = document.getElementById('tipoConta').value.trim();
+            const data = document.getElementById('dataVencimento').value;
+            const valor = parseFloat(document.getElementById('valor').value);
+            const parcelas = parseInt(document.getElementById('parcelas').value) || 1;
+            const status = document.querySelector('input[name="status"]:checked').value;
+            const obs = document.getElementById('observacao').value.trim();
+            
+            if (!tipo || !data || isNaN(valor)) {
+                alert('Preencha os campos obrigatórios (Tipo, Vencimento e Valor)');
+                return;
+            }
+
+            const baseId = Date.now();
+            
+            if (parcelas > 1) {
+                for (let i = 1; i <= parcelas; i++) {
+                    let dataParcela;
+                    
+                    if (i === 1) {
+                        dataParcela = data;
+                    } else {
+                        const [ano, mes, dia] = data.split('-').map(Number);
+                        const dataAjustada = ajustarDiaDoMes(ano, mes - 1 + (i - 1), dia);
+                        dataParcela = dataAjustada;
+                    }
+                    
+                    const novaConta = {
+                        id: baseId + i,
+                        idBase: baseId,
+                        tipo: tipo + ` (${i}/${parcelas})`,
+                        data: dataParcela,
+                        valor: valor,
+                        parcelas: parcelas,
+                        parcelaAtual: i,
+                        status: i === 1 ? status : 'a-vencer',
+                        obs: obs || `${tipo} - Parcela ${i} de ${parcelas}`
+                    };
+                    contas.push(novaConta);
+                }
+            } else {
+                contas.push({
+                    id: baseId,
+                    tipo: tipo + ' (1/1)',
+                    data: data,
+                    valor: valor,
+                    parcelas: 1,
+                    parcelaAtual: 1,
+                    status: status,
+                    obs: obs
+                });
+            }
+            
+            salvarDados();
+            listarContasPorMes();
+            atualizarSubtotalMes();
+            
+            document.getElementById('contaForm').reset();
+            const hoje = new Date();
+            const hojeFormatado = hoje.getFullYear() + '-' + 
+                                 String(hoje.getMonth() + 1).padStart(2, '0') + '-' + 
+                                 String(hoje.getDate()).padStart(2, '0');
+            document.getElementById('dataVencimento').value = hojeFormatado;
+            document.getElementById('parcelas').value = 1;
+            document.getElementById('statusAvencer').checked = true;
+            
+            toggleFormularioConta();
+        }
+
+        function ajustarDiaDoMes(ano, mesIndex, dia) {
+            const primeiroDiaProximoMes = new Date(ano, mesIndex + 1, 1);
+            const ultimoDiaDoMes = new Date(primeiroDiaProximoMes - 1);
+            const ultimoDia = ultimoDiaDoMes.getDate();
+            
+            const diaAjustado = Math.min(dia, ultimoDia);
+            
+            const dataAjustada = new Date(ano, mesIndex, diaAjustado);
+            
+            const anoStr = dataAjustada.getFullYear();
+            const mesStr = String(dataAjustada.getMonth() + 1).padStart(2, '0');
+            const diaStr = String(dataAjustada.getDate()).padStart(2, '0');
+            
+            return `${anoStr}-${mesStr}-${diaStr}`;
+        }
+
+        function abrirEditarConta(id) {
+            const conta = contas.find(c => c.id === id);
+            if (!conta) return;
+            
+            document.getElementById('editarContaId').value = conta.id;
+            document.getElementById('editarStatusAtual').value = conta.status;
+            
+            const [ano, mes, dia] = conta.data.split('-');
+            const dataFormatada = `${dia}/${mes}/${ano}`;
+            const valorFormatado = new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(conta.valor);
+            
+            let infoHTML = `
+                <div class="conta-info-item"><strong>Tipo:</strong> ${conta.tipo}</div>
+                <div class="conta-info-item"><strong>Vencimento:</strong> ${dataFormatada}</div>
+                <div class="conta-info-item"><strong>Valor:</strong> ${valorFormatado}</div>
+                <div class="conta-info-item"><strong>Parcelas:</strong> ${conta.parcelas}x (Parcela ${conta.parcelaAtual})</div>
+                <div class="conta-info-item"><strong>Status:</strong> <span class="status-badge ${conta.status === 'a-vencer' ? 'a-vencer' : conta.status === 'pago' ? 'pago' : 'vencido'}">${conta.status === 'a-vencer' ? 'A Vencer' : conta.status === 'pago' ? 'Pago' : 'Vencido'}</span></div>
+            `;
+            
+            if (conta.obs) {
+                infoHTML += `<div class="conta-info-item"><strong>Observação:</strong> ${conta.obs}</div>`;
+            }
+            
+            document.getElementById('editarContaInfo').innerHTML = infoHTML;
+            
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                btn.classList.remove('selecionado');
+            });
+            
+            document.querySelector(`.status-btn.${conta.status === 'a-vencer' ? 'avencer' : conta.status === 'pago' ? 'pago' : 'vencido'}`).classList.add('selecionado');
+            
+            document.getElementById('editarContaModal').style.display = 'flex';
+        }
+
+        function alterarStatus(novoStatus) {
+            const id = parseInt(document.getElementById('editarContaId').value);
+            const conta = contas.find(c => c.id === id);
+            if (!conta) return;
+            
+            const contaIndex = contas.findIndex(c => c.id === id);
+            contas[contaIndex].status = novoStatus;
+            
+            salvarDados();
+            listarContasPorMes();
+            atualizarSubtotalMes();
+            
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                btn.classList.remove('selecionado');
+            });
+            
+            document.querySelector(`.status-btn.${novoStatus === 'a-vencer' ? 'avencer' : novoStatus === 'pago' ? 'pago' : 'vencido'}`).classList.add('selecionado');
+            
+            const infoDiv = document.getElementById('editarContaInfo');
+            const statusBadge = infoDiv.querySelector('.status-badge');
+            if (statusBadge) {
+                statusBadge.className = `status-badge ${novoStatus === 'a-vencer' ? 'a-vencer' : novoStatus === 'pago' ? 'pago' : 'vencido'}`;
+                statusBadge.textContent = novoStatus === 'a-vencer' ? 'A Vencer' : novoStatus === 'pago' ? 'Pago' : 'Vencido';
+            }
+        }
+
+        function abrirModalExclusao() {
+            const id = parseInt(document.getElementById('editarContaId').value);
+            const conta = contas.find(c => c.id === id);
+            if (!conta) return;
+            
+            document.getElementById('editarContaModal').style.display = 'none';
+            
+            const idBase = conta.idBase || conta.id;
+            const contasRelacionadas = contas.filter(c => 
+                c.idBase === idBase || c.id === idBase
+            );
+            
+            const [ano, mes, dia] = conta.data.split('-');
+            const dataFormatada = `${dia}/${mes}/${ano}`;
+            const valorFormatado = new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(conta.valor);
+            
+            let infoHTML = `
+                <div><strong>Tipo:</strong> ${conta.tipo}</div>
+                <div><strong>Vencimento:</strong> ${dataFormatada}</div>
+                <div><strong>Valor:</strong> ${valorFormatado}</div>
+            `;
+            
+            document.getElementById('excluirContaInfo').innerHTML = infoHTML;
+            
+            if (contasRelacionadas.length > 1) {
+                document.getElementById('opcoesExclusao').style.display = 'block';
+                document.getElementById('exclusaoUnica').style.display = 'none';
+                document.getElementById('excluirContaConfirmModal').dataset.contaId = id;
+                document.getElementById('excluirContaConfirmModal').dataset.excluirTodas = 'false';
+            } else {
+                document.getElementById('opcoesExclusao').style.display = 'none';
+                document.getElementById('exclusaoUnica').style.display = 'block';
+                document.getElementById('excluirContaConfirmModal').dataset.contaId = id;
+            }
+            
+            document.getElementById('excluirContaConfirmModal').style.display = 'flex';
+        }
+
+        function excluirConta(excluirTodas) {
+            const id = parseInt(document.getElementById('excluirContaConfirmModal').dataset.contaId);
+            const conta = contas.find(c => c.id === id);
+            if (!conta) return;
+            
+            const idBase = conta.idBase || conta.id;
+            const contasRelacionadas = contas.filter(c => 
+                c.idBase === idBase || c.id === idBase
+            );
+            
+            if (excluirTodas) {
+                contas = contas.filter(c => !(c.idBase === idBase || c.id === idBase));
+            } else {
+                contas = contas.filter(c => c.id !== id);
+                
+                if (contasRelacionadas.length > 1) {
+                    const parcelasRestantes = contas.filter(c => 
+                        (c.idBase === idBase || c.id === idBase) && c.id !== id
+                    );
+                    
+                    if (parcelasRestantes.length > 0) {
+                        const novaQtdeParcelas = parcelasRestantes.length;
+                        const tipoBase = parcelasRestantes[0].tipo.split(' (')[0];
+                        
+                        parcelasRestantes.forEach((contaRestante, index) => {
+                            const contaIndex = contas.findIndex(c => c.id === contaRestante.id);
+                            contas[contaIndex].parcelas = novaQtdeParcelas;
+                            contas[contaIndex].parcelaAtual = index + 1;
+                            contas[contaIndex].tipo = tipoBase + ` (${index + 1}/${novaQtdeParcelas})`;
+                        });
+                    }
+                }
+            }
+            
+            salvarDados();
+            listarContasPorMes();
+            atualizarSubtotalMes();
+            
+            document.getElementById('excluirContaConfirmModal').style.display = 'none';
+        }
+
+        function abrirEditarDetalhesModal() {
+            const id = parseInt(document.getElementById('editarContaId').value);
+            document.getElementById('editarContaModal').style.display = 'none';
+            abrirEditarDetalhes(id);
+        }
+
+        function abrirEditarDetalhes(id) {
+            const conta = contas.find(c => c.id === id);
+            if (!conta) return;
+            
+            let tipoBase = conta.tipo;
+            if (tipoBase.includes(' (')) {
+                tipoBase = tipoBase.split(' (')[0];
+            }
+            
+            const idBase = conta.idBase || conta.id;
+            const contasRelacionadas = contas.filter(c => 
+                c.idBase === idBase || c.id === idBase
+            );
+            
+            document.getElementById('editarTipoConta').value = tipoBase;
+            document.getElementById('editarDataVencimento').value = conta.data;
+            document.getElementById('editarValor').value = conta.valor;
+            document.getElementById('editarParcelas').value = conta.parcelas;
+            document.getElementById('editarObservacao').value = conta.obs || '';
+            document.getElementById('editarContaDetalhesId').value = conta.id;
+            
+            document.querySelector(`input[name="editarStatus"][value="${conta.status}"]`).checked = true;
+            
+            document.querySelectorAll('.editar-opcao').forEach(o => o.classList.remove('selecionada'));
+            document.querySelector('.editar-opcao[data-opcao="apenas"]').classList.add('selecionada');
+            document.getElementById('editarOpcaoSelecionada').value = 'apenas';
+            
+            if (contasRelacionadas.length <= 1) {
+                document.querySelector('.editar-opcao[data-opcao="todas"]').style.display = 'none';
+            } else {
+                document.querySelector('.editar-opcao[data-opcao="todas"]').style.display = 'block';
+            }
+            
+            document.getElementById('editarDetalhesModal').style.display = 'flex';
+        }
+
+        // NOVA FUNÇÃO: Verificar status baseado na data
+        function verificarStatusAutomatico(dataStr) {
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            
+            const [ano, mes, dia] = dataStr.split('-').map(Number);
+            const dataVenc = new Date(ano, mes - 1, dia);
+            dataVenc.setHours(0, 0, 0, 0);
+            
+            if (dataVenc < hoje) {
+                return 'vencido';
+            } else {
+                return 'a-vencer';
+            }
+        }
+
+        function salvarEdicaoDetalhes(e) {
+            e.preventDefault();
+            
+            const id = parseInt(document.getElementById('editarContaDetalhesId').value);
+            const tipo = document.getElementById('editarTipoConta').value.trim();
+            const data = document.getElementById('editarDataVencimento').value;
+            const valor = parseFloat(document.getElementById('editarValor').value);
+            const parcelas = parseInt(document.getElementById('editarParcelas').value) || 1;
+            const statusManual = document.querySelector('input[name="editarStatus"]:checked').value;
+            const obs = document.getElementById('editarObservacao').value.trim();
+            const opcao = document.getElementById('editarOpcaoSelecionada').value;
+            
+            if (!tipo || !data || isNaN(valor)) {
+                alert('Preencha os campos obrigatórios (Tipo, Vencimento e Valor)');
+                return;
+            }
+            
+            const conta = contas.find(c => c.id === id);
+            if (!conta) return;
+            
+            const idBase = conta.idBase || conta.id;
+            const contasRelacionadas = contas.filter(c => 
+                c.idBase === idBase || c.id === idBase
+            );
+            
+            if (opcao === 'apenas') {
+                // Verificar se o status deve ser alterado automaticamente
+                let statusFinal = statusManual;
+                if (statusManual === 'pago') {
+                    // Se o usuário marcou como pago manualmente, mantém pago
+                    statusFinal = 'pago';
+                } else {
+                    // Verificar automaticamente com base na data
+                    const statusAutomatico = verificarStatusAutomatico(data);
+                    statusFinal = statusAutomatico;
+                }
+                
+                const contaIndex = contas.findIndex(c => c.id === id);
+                contas[contaIndex] = {
+                    ...contas[contaIndex],
+                    tipo: tipo + ` (${contas[contaIndex].parcelaAtual}/${contas[contaIndex].parcelas})`,
+                    data: data,
+                    valor: valor,
+                    status: statusFinal,
+                    obs: obs
+                };
+            } 
+            else if (opcao === 'todas') {
+                contas = contas.filter(c => !(c.idBase === idBase || c.id === idBase));
+                
+                for (let i = 1; i <= parcelas; i++) {
+                    let dataParcela;
+                    
+                    if (i === 1) {
+                        dataParcela = data;
+                    } else {
+                        const [ano, mes, dia] = data.split('-').map(Number);
+                        dataParcela = ajustarDiaDoMes(ano, mes - 1 + (i - 1), dia);
+                    }
+                    
+                    // Verificar status automaticamente para cada parcela
+                    let statusParcela;
+                    if (i === 1 && statusManual === 'pago') {
+                        // Se o usuário marcou a primeira como pago, mantém pago
+                        statusParcela = 'pago';
+                    } else if (i === 1 && statusManual !== 'pago') {
+                        // Verificar automaticamente
+                        statusParcela = verificarStatusAutomatico(dataParcela);
+                    } else {
+                        // Para parcelas subsequentes, verificar automaticamente
+                        statusParcela = verificarStatusAutomatico(dataParcela);
+                    }
+                    
+                    const novaConta = {
+                        id: i === 1 ? id : Date.now() + i,
+                        idBase: i === 1 ? null : id,
+                        tipo: tipo + (parcelas > 1 ? ` (${i}/${parcelas})` : ' (1/1)'),
+                        data: dataParcela,
+                        valor: valor,
+                        parcelas: parcelas,
+                        parcelaAtual: i,
+                        status: statusParcela,
+                        obs: obs || (parcelas > 1 ? `${tipo} - Parcela ${i} de ${parcelas}` : '')
+                    };
+                    contas.push(novaConta);
+                }
+            }
+            
+            salvarDados();
+            listarContasPorMes();
+            atualizarSubtotalMes();
+            
+            document.getElementById('editarDetalhesModal').style.display = 'none';
+        }
+
+        function listarContasPorMes() {
+            const container = document.getElementById('contasPorMes');
+            
+            if (contas.length === 0) {
+                container.innerHTML = '<div class="no-data"><i class="fas fa-file-invoice-dollar"></i><p>Nenhuma conta cadastrada.</p></div>';
+                return;
+            }
+            
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            
+            contas.forEach(conta => {
+                const [ano, mes, dia] = conta.data.split('-').map(Number);
+                const dataVenc = new Date(ano, mes - 1, dia);
+                dataVenc.setHours(0, 0, 0, 0);
+                if (conta.status === 'a-vencer' && dataVenc < hoje) {
+                    conta.status = 'vencido';
+                }
+            });
+            
+            const contasPorMes = {};
+            contas.forEach(conta => {
+                const [ano, mes] = conta.data.split('-').map(Number);
+                const chave = `${ano}-${mes - 1}`;
+                
+                if (!contasPorMes[chave]) contasPorMes[chave] = [];
+                contasPorMes[chave].push(conta);
+            });
+            
+            mesesComContas = Object.keys(contasPorMes).sort((a, b) => {
+                const [anoA, mesA] = a.split('-').map(Number);
+                const [anoB, mesB] = b.split('-').map(Number);
+                return anoA !== anoB ? anoA - anoB : mesA - mesB;
+            });
+            
+            if (mesesComContas.length === 0) {
+                container.innerHTML = '<div class="no-data"><i class="fas fa-file-invoice-dollar"></i><p>Nenhuma conta cadastrada.</p></div>';
+                return;
+            }
+            
+            if (mesAtualIndex >= mesesComContas.length) mesAtualIndex = 0;
+            mostrarMesAtual();
+            salvarDados();
+        }
+
+        function mostrarMesAtual() {
+            const container = document.getElementById('contasPorMes');
+
+            if (mesesComContas.length === 0) {
+                container.innerHTML = '<div class="no-data"><i class="fas fa-file-invoice-dollar"></i><p>Nenhuma conta cadastrada.</p></div>';
+                return;
+            }
+
+            const chaveMesAtual = mesesComContas[mesAtualIndex];
+            const [ano, mes] = chaveMesAtual.split('-').map(Number);
+            const nomeMes = meses[mes];
+
+            let contasMes = [];
+            let tituloPeriodo = `${nomeMes} ${ano}`;
+
+            if (filtroBuscaGeral && filtroBuscaGeral.trim() !== '') {
+                const termo = filtroBuscaGeral.toLowerCase().trim();
+                contasMes = contas.filter(conta => {
+                    const texto = [
+                        conta.tipo || '',
+                        conta.obs || '',
+                        conta.status || '',
+                        conta.data || ''
+                    ].join(' ').toLowerCase();
+                    return texto.includes(termo);
+                });
+                tituloPeriodo = `Busca: ${filtroBuscaGeral}`;
+            } else if (filtroTodosVencidos) {
+                contasMes = contas.filter(conta => conta.status === 'vencido');
+                tituloPeriodo = 'Todos Vencidos';
+            } else {
+                contasMes = obterContasPorMes(chaveMesAtual);
+            }
+
+            if (!filtroTodosVencidos && !(filtroBuscaGeral && filtroBuscaGeral.trim() !== '')) {
+                if (filtroQuinzena === 'primeira') {
+                    contasMes = contasMes.filter(conta => {
+                        const dia = parseInt(conta.data.split('-')[2]);
+                        return dia >= 1 && dia <= 15;
+                    });
+                } else if (filtroQuinzena === 'segunda') {
+                    contasMes = contasMes.filter(conta => {
+                        const dia = parseInt(conta.data.split('-')[2]);
+                        return dia >= 16 && dia <= 31;
+                    });
+                }
+            }
+
+            if (Array.isArray(filtroStatus) && filtroStatus.length > 0 && !filtroTodosVencidos) {
+                contasMes = contasMes.filter(conta => filtroStatus.includes(conta.status));
+            }
+
+            contasMes.sort((a, b) => {
+                const [anoA, mesA, diaA] = a.data.split('-').map(Number);
+                const [anoB, mesB, diaB] = b.data.split('-').map(Number);
+                return new Date(anoA, mesA - 1, diaA) - new Date(anoB, mesB - 1, diaB);
+            });
+
+            let html = `
+                <div class="mes-navegacao">
+                    <button class="nav-arrow ${mesAtualIndex === 0 || filtroTodosVencidos || filtroBuscaGeral ? 'disabled' : ''}" onclick="mudarMes(-1)" ${mesAtualIndex === 0 || filtroTodosVencidos || filtroBuscaGeral ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <h3><i class="fas fa-calendar-alt"></i> ${tituloPeriodo}</h3>
+                    <button class="nav-arrow ${mesAtualIndex === mesesComContas.length - 1 || filtroTodosVencidos || filtroBuscaGeral ? 'disabled' : ''}" onclick="mudarMes(1)" ${mesAtualIndex === mesesComContas.length - 1 || filtroTodosVencidos || filtroBuscaGeral ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            `;
+
+            html += `
+                <div class="filtros-container">
+                    <div style="width: 100%;">
+                        <div class="filtros-titulo">Filtrar por Quinzena</div>
+                        <div class="filtros-grupo">
+                            <button class="filtro-btn primeira ${filtroQuinzena === 'primeira' ? 'ativo' : ''}" onclick="aplicarFiltroQuinzena('primeira')" ${filtroTodosVencidos || filtroBuscaGeral ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
+                                <i class="fas fa-calendar-day"></i> <span>Primeira (1-15)</span>
+                            </button>
+                            <button class="filtro-btn segunda ${filtroQuinzena === 'segunda' ? 'ativo' : ''}" onclick="aplicarFiltroQuinzena('segunda')" ${filtroTodosVencidos || filtroBuscaGeral ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
+                                <i class="fas fa-calendar-week"></i> <span>Segunda (16-31)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="width: 100%; margin-top: 10px;">
+                        <div class="filtros-titulo">Filtrar por Status</div>
+                        <div class="filtros-grupo">
+                            <button class="filtro-btn pago ${filtroStatus.includes('pago') ? 'ativo' : ''}" onclick="aplicarFiltroStatus('pago')" ${filtroTodosVencidos ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
+                                <i class="fas fa-check-circle"></i> <span>Pago</span>
+                            </button>
+                            <button class="filtro-btn avencer ${filtroStatus.includes('a-vencer') ? 'ativo' : ''}" onclick="aplicarFiltroStatus('a-vencer')" ${filtroTodosVencidos ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
+                                <i class="fas fa-clock"></i> <span>A Vencer</span>
+                            </button>
+                            <button class="filtro-btn vencido ${filtroStatus.includes('vencido') ? 'ativo' : ''}" onclick="aplicarFiltroStatus('vencido')" ${filtroTodosVencidos ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
+                                <i class="fas fa-exclamation-circle"></i> <span>Vencido</span>
+                            </button>
+                            <button class="filtro-btn todos-vencidos ${filtroTodosVencidos ? 'ativo' : ''}" onclick="aplicarTodosVencidos()">
+                                <i class="fas fa-list-check"></i> <span>Todos Vencidos</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="width: 100%; margin-top: 10px;">
+                        <div class="filtros-grupo" style="align-items:center;">
+                            <button class="filtro-btn limpar" onclick="limparTodosFiltros()">
+                                <i class="fas fa-times"></i> <span>Limpar Todos os Filtros</span>
+                            </button>
+                            <div class="busca-geral-filtro">
+                                <i class="fas fa-search"></i>
+                                <input id="campoBuscaGeral" type="text" value="${escapeHtmlAttr(filtroBuscaGeral)}" oninput="aplicarBuscaGeral(this.value)" placeholder="Buscar conta em todo histórico...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (filtroQuinzena || (Array.isArray(filtroStatus) && filtroStatus.length > 0) || filtroTodosVencidos || filtroBuscaGeral) {
+                const filtrosAtivos = [];
+                if (filtroBuscaGeral) filtrosAtivos.push(`Busca: ${filtroBuscaGeral}`);
+                if (filtroTodosVencidos) filtrosAtivos.push('Todos Vencidos');
+                if (filtroQuinzena === 'primeira') filtrosAtivos.push('Primeira Quinzena (dias 1-15)');
+                if (filtroQuinzena === 'segunda') filtrosAtivos.push('Segunda Quinzena (dias 16-31)');
+                if (filtroStatus.includes('pago')) filtrosAtivos.push('Status: Pago');
+                if (filtroStatus.includes('a-vencer')) filtrosAtivos.push('Status: A Vencer');
+                if (filtroStatus.includes('vencido')) filtrosAtivos.push('Status: Vencido');
+
+                html += `
+                    <div class="info-filtro-ativo">
+                        <span><i class="fas fa-filter"></i> Filtros ativos: ${filtrosAtivos.join(', ')}</span>
+                        <button class="limpar-filtro" onclick="limparTodosFiltros()">
+                            <i class="fas fa-times"></i> Limpar
+                        </button>
+                    </div>
+                `;
+            }
+
+            html += gerarTabelaHTML(contasMes);
+            container.innerHTML = html;
+
+            document.getElementById('mesAtualNome').textContent = tituloPeriodo;
+
+            atualizarSubtotalMesComFiltro(contasMes);
+
+            if (filtroBuscaGeral) {
+                const campo = document.getElementById('campoBuscaGeral');
+                if (campo) {
+                    campo.focus();
+                    campo.setSelectionRange(campo.value.length, campo.value.length);
+                }
+            }
+        }
+
+        function aplicarFiltroQuinzena(filtro) {
+            filtroTodosVencidos = false;
+            filtroQuinzena = filtroQuinzena === filtro ? null : filtro;
+            mostrarMesAtual();
+        }
+
+        function aplicarFiltroStatus(filtro) {
+            filtroTodosVencidos = false;
+            if (!Array.isArray(filtroStatus)) filtroStatus = [];
+            if (filtroStatus.includes(filtro)) {
+                filtroStatus = filtroStatus.filter(s => s !== filtro);
+            } else {
+                filtroStatus.push(filtro);
+            }
+            mostrarMesAtual();
+        }
+
+        function aplicarBuscaGeral(valor) {
+            filtroBuscaGeral = valor || '';
+            if (filtroBuscaGeral.trim() !== '') {
+                filtroTodosVencidos = false;
+                filtroQuinzena = null;
+            }
+            mostrarMesAtual();
+        }
+
+        function escapeHtmlAttr(texto) {
+            return String(texto || '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function aplicarTodosVencidos() {
+            filtroTodosVencidos = !filtroTodosVencidos;
+            if (filtroTodosVencidos) {
+                filtroQuinzena = null;
+                filtroStatus = [];
+            }
+            mostrarMesAtual();
+        }
+
+        function limparTodosFiltros() {
+            filtroQuinzena = null;
+            filtroStatus = [];
+            filtroTodosVencidos = false;
+            filtroBuscaGeral = '';
+            mostrarMesAtual();
+        }
+
+        function obterContasPorMes(chave) {
+            const [ano, mes] = chave.split('-').map(Number);
+            return contas.filter(conta => {
+                const [contaAno, contaMes] = conta.data.split('-').map(Number);
+                return contaMes - 1 === mes && contaAno === ano;
+            });
+        }
+
+        function mudarMes(direcao) {
+            const novoIndex = mesAtualIndex + direcao;
+            if (novoIndex >= 0 && novoIndex < mesesComContas.length) {
+                mesAtualIndex = novoIndex;
+                mostrarMesAtual();
+            }
+        }
+
+        function atualizarSubtotalMes() {
+            if (mesesComContas.length === 0) {
+                document.getElementById('subtotalMesTotal').textContent = 'R$ 0';
+                document.getElementById('subtotalMesAvencer').textContent = 'R$ 0';
+                document.getElementById('subtotalMesPago').textContent = 'R$ 0';
+                document.getElementById('subtotalMesVencido').textContent = 'R$ 0';
+                return;
+            }
+            
+            const chaveMesAtual = mesesComContas[mesAtualIndex];
+            const contasMes = obterContasPorMes(chaveMesAtual);
+            
+            let total = 0, totalAvencer = 0, totalPago = 0, totalVencido = 0;
+            
+            contasMes.forEach(conta => {
+                total += conta.valor;
+                if (conta.status === 'a-vencer') totalAvencer += conta.valor;
+                else if (conta.status === 'pago') totalPago += conta.valor;
+                else totalVencido += conta.valor;
+            });
+            
+            const formatador = (valor) => new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(valor);
+            
+            document.getElementById('subtotalMesTotal').textContent = formatador(total);
+            document.getElementById('subtotalMesAvencer').textContent = formatador(totalAvencer);
+            document.getElementById('subtotalMesPago').textContent = formatador(totalPago);
+            document.getElementById('subtotalMesVencido').textContent = formatador(totalVencido);
+        }
+
+        function atualizarSubtotalMesComFiltro(contasMesFiltradas) {
+            let total = 0, totalAvencer = 0, totalPago = 0, totalVencido = 0;
+            
+            contasMesFiltradas.forEach(conta => {
+                total += conta.valor;
+                if (conta.status === 'a-vencer') totalAvencer += conta.valor;
+                else if (conta.status === 'pago') totalPago += conta.valor;
+                else totalVencido += conta.valor;
+            });
+            
+            const formatador = (valor) => new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(valor);
+            
+            if (filtroQuinzena || filtroStatus) {
+                const chaveMesAtual = mesesComContas[mesAtualIndex];
+                const contasMesCompleto = obterContasPorMes(chaveMesAtual);
+                
+                let totalCompleto = 0, totalAvencerCompleto = 0, totalPagoCompleto = 0, totalVencidoCompleto = 0;
+                
+                contasMesCompleto.forEach(conta => {
+                    totalCompleto += conta.valor;
+                    if (conta.status === 'a-vencer') totalAvencerCompleto += conta.valor;
+                    else if (conta.status === 'pago') totalPagoCompleto += conta.valor;
+                    else totalVencidoCompleto += conta.valor;
+                });
+                
+                document.getElementById('subtotalMesTotal').textContent = `${formatador(total)} / ${formatador(totalCompleto)}`;
+                document.getElementById('subtotalMesAvencer').textContent = `${formatador(totalAvencer)} / ${formatador(totalAvencerCompleto)}`;
+                document.getElementById('subtotalMesPago').textContent = `${formatador(totalPago)} / ${formatador(totalPagoCompleto)}`;
+                document.getElementById('subtotalMesVencido').textContent = `${formatador(totalVencido)} / ${formatador(totalVencidoCompleto)}`;
+            } else {
+                document.getElementById('subtotalMesTotal').textContent = formatador(total);
+                document.getElementById('subtotalMesAvencer').textContent = formatador(totalAvencer);
+                document.getElementById('subtotalMesPago').textContent = formatador(totalPago);
+                document.getElementById('subtotalMesVencido').textContent = formatador(totalVencido);
+            }
+        }
+
+        function gerarTabelaHTML(listaContas) {
+            if (listaContas.length === 0) {
+                const mensagem = (filtroQuinzena || filtroStatus) ? 
+                    `<div class="no-data" style="padding:15px;">
+                        <i class="fas fa-filter"></i>
+                        <p>Nenhuma conta encontrada para os filtros aplicados.</p>
+                    </div>` :
+                    `<div class="no-data" style="padding:15px;">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <p>Nenhuma conta para este mês.</p>
+                    </div>`;
+                return mensagem;
+            }
+            
+            let html = '<table><thead><tr><th>Tipo</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead><tbody>';
+            
+            listaContas.forEach(conta => {
+                const [ano, mes, dia] = conta.data.split('-');
+                const dataFormatada = `${dia}/${mes}/${ano}`;
+                
+                const valorFormatado = new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(conta.valor);
+                
+                const statusClass = conta.status === 'a-vencer' ? 'a-vencer' : conta.status === 'pago' ? 'pago' : 'vencido';
+                const statusText = conta.status === 'a-vencer' ? 'A Vencer' : conta.status === 'pago' ? 'Pago' : 'Vencido';
+                
+                html += `<tr onclick="abrirEditarConta(${conta.id})">
+                    <td>${conta.tipo}</td>
+                    <td>${dataFormatada}</td>
+                    <td>${valorFormatado}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            return html;
+        }
+
+        function abrirModalTipos() {
+            const list = document.getElementById('tiposList');
+            list.innerHTML = '';
+            
+            tiposConta.forEach(tipo => {
+                const count = contas.filter(c => c.tipo.includes(tipo)).length;
+                list.innerHTML += `
+                    <div class="tipo-item">
+                        ${tipo} 
+                        <span>(${count})</span>
+                        <button onclick="removerTipo('${tipo}')" ${count>0?'disabled':''} 
+                                style="background:none;border:none;color:#e74c3c;cursor:pointer;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>`;
+            });
+            
+            document.getElementById('tiposModal').style.display = 'flex';
+        }
+
+        function adicionarTipo() {
+            const input = document.getElementById('novoTipo');
+            const tipo = input.value.trim();
+            
+            if (!tipo) return alert('Digite um nome para o tipo');
+            if (tiposConta.includes(tipo)) return alert('Este tipo já existe');
+            
+            tiposConta.push(tipo);
+            tiposConta.sort((a,b) => a.localeCompare(b, 'pt-BR'));
+            
+            salvarDados();
+            atualizarSelectTipos();
+            abrirModalTipos();
+            input.value = '';
+        }
+
+        function removerTipo(tipo) {
+            const count = contas.filter(c => c.tipo.includes(tipo)).length;
+            if (count > 0) return alert(`Não é possível remover. Existem ${count} conta(s) usando este tipo.`);
+            if (!confirm(`Remover o tipo "${tipo}"?`)) return;
+            
+            tiposConta = tiposConta.filter(t => t !== tipo);
+            salvarDados();
+            atualizarSelectTipos();
+            abrirModalTipos();
+        }
+
+        function abrirModalExportar() {
+            document.getElementById('exportarModal').style.display = 'flex';
+        }
+
+        function prepararDadosExportacao() {
+            return contas.map(conta => ({
+                id: conta.id,
+                idBase: conta.idBase || '',
+                tipo: conta.tipo || '',
+                data: conta.data || '',
+                data_br: conta.data ? conta.data.split('-').reverse().join('/') : '',
+                valor: Number(conta.valor || 0),
+                parcelas: Number(conta.parcelas || 1),
+                parcelaAtual: Number(conta.parcelaAtual || 1),
+                status: conta.status === 'a-vencer' ? 'A Vencer' : conta.status === 'pago' ? 'Pago' : 'Vencido',
+                observacao: conta.obs || ''
+            }));
+        }
+
+        function baixarBlob(conteudo, nomeArquivo, tipoMime) {
+            const blob = conteudo instanceof Blob ? conteudo : new Blob([conteudo], { type: tipoMime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportarDadosFormato(formato) {
+            const dados = prepararDadosExportacao();
+            const dataAtual = new Date().toISOString().slice(0, 10);
+            document.getElementById('exportarModal').style.display = 'none';
+
+            if (formato === 'json') {
+                const json = JSON.stringify({
+                    contas: contas,
+                    tiposConta: tiposConta,
+                    dataExportacao: new Date().toISOString(),
+                    totalContas: contas.length
+                }, null, 2);
+                baixarBlob(json, `controle-financeiro-${dataAtual}.json`, 'application/json;charset=utf-8');
+                return;
+            }
+
+            if (formato === 'csv') {
+                const colunas = ['id','idBase','tipo','data','data_br','valor','parcelas','parcelaAtual','status','observacao'];
+                const escapeCsv = (valor) => {
+                    const texto = String(valor ?? '').replace(/"/g, '""');
+                    return `"${texto}"`;
+                };
+                const linhas = [
+                    colunas.join(';'),
+                    ...dados.map(item => colunas.map(col => escapeCsv(item[col])).join(';'))
+                ];
+                baixarBlob('\\ufeff' + linhas.join('\\n'), `controle-financeiro-${dataAtual}.csv`, 'text/csv;charset=utf-8');
+                return;
+            }
+
+            if (formato === 'xlsx') {
+                if (typeof XLSX === 'undefined') {
+                    alert('Biblioteca XLSX não carregou. Verifique a internet e tente novamente.');
+                    return;
+                }
+
+                const ws = XLSX.utils.json_to_sheet(dados);
+                ws['!cols'] = [
+                    {wch:14},{wch:14},{wch:32},{wch:12},{wch:12},{wch:12},{wch:10},{wch:14},{wch:12},{wch:45}
+                ];
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Contas');
+
+                const tiposSheet = XLSX.utils.json_to_sheet(tiposConta.map(tipo => ({ tipo })));
+                XLSX.utils.book_append_sheet(wb, tiposSheet, 'Tipos');
+
+                XLSX.writeFile(wb, `controle-financeiro-${dataAtual}.xlsx`);
+                return;
+            }
+        }
+
+        function exportarDados() {
+            abrirModalExportar();
+        }
+
+        // NOVA FUNÇÃO: Abrir modal de confirmação para limpar todos os dados
+        function abrirModalLimparTodos() {
+            document.getElementById('limparTodosConfirmModal').style.display = 'flex';
+        }
+
+        // NOVA FUNÇÃO: Confirmar limpar todos os dados
+        function confirmarLimparTodos() {
+            contas = [];
+            tiposConta = [...tiposPadrao];
+            tiposConta.sort((a,b) => a.localeCompare(b, 'pt-BR'));
+            
+            salvarDados();
+            carregarDados();
+            
+            document.getElementById('limparTodosConfirmModal').style.display = 'none';
+            
+            // Mensagem de confirmação
+            alert('Todos os dados foram apagados com sucesso!');
+        }
+
+        function abrirModalRelatorio() {
+            if (contas.length === 0) {
+                alert('Não há contas para gerar relatório.');
+                return;
+            }
+            
+            document.getElementById('reportModal').style.display = 'flex';
+            document.getElementById('reportPreview').style.display = 'none';
+            document.getElementById('reportActions').style.display = 'none';
+            currentReportData = null;
+            currentReportBlob = null;
+        }
+
+        function gerarRelatorioJPG() {
+            try {
+                if (mesesComContas.length === 0) {
+                    alert('Não há contas para gerar relatório.');
+                    return;
+                }
+                
+                const chaveMesAtual = mesesComContas[mesAtualIndex];
+                const [ano, mes] = chaveMesAtual.split('-').map(Number);
+                const nomeMes = meses[mes];
+                let contasMes = obterContasPorMes(chaveMesAtual);
+                
+                // Aplicar os mesmos filtros que estão ativos na visualização
+                if (filtroQuinzena === 'primeira') {
+                    contasMes = contasMes.filter(conta => {
+                        const dia = parseInt(conta.data.split('-')[2]);
+                        return dia >= 1 && dia <= 15;
+                    });
+                } else if (filtroQuinzena === 'segunda') {
+                    contasMes = contasMes.filter(conta => {
+                        const dia = parseInt(conta.data.split('-')[2]);
+                        return dia >= 16 && dia <= 31;
+                    });
+                }
+                
+                if (filtroStatus) {
+                    contasMes = contasMes.filter(conta => conta.status === filtroStatus);
+                }
+                
+                if (contasMes.length === 0) {
+                    alert('Não há contas no mês selecionado para gerar relatório.');
+                    return;
+                }
+                
+                contasMes.sort((a, b) => {
+                    const [anoA, mesA, diaA] = a.data.split('-').map(Number);
+                    const [anoB, mesB, diaB] = b.data.split('-').map(Number);
+                    return new Date(anoA, mesA - 1, diaA) - new Date(anoB, mesB - 1, diaB);
+                });
+                
+                const relatorioDiv = document.createElement('div');
+                relatorioDiv.style.position = 'absolute';
+                relatorioDiv.style.left = '-9999px';
+                relatorioDiv.style.top = '-9999px';
+                relatorioDiv.style.width = '800px';
+                relatorioDiv.style.backgroundColor = 'white';
+                relatorioDiv.style.padding = '20px';
+                relatorioDiv.style.boxSizing = 'border-box';
+                
+                const titulo = document.createElement('h2');
+                titulo.textContent = `Relatório de Contas - ${nomeMes} ${ano}`;
+                
+                // Adicionar informação sobre filtros ativos
+                let filtrosInfo = '';
+                if (filtroQuinzena || filtroStatus) {
+                    const filtrosAtivos = [];
+                    if (filtroQuinzena === 'primeira') filtrosAtivos.push('Primeira Quinzena (1-15)');
+                    if (filtroQuinzena === 'segunda') filtrosAtivos.push('Segunda Quinzena (16-31)');
+                    if (filtroStatus === 'pago') filtrosAtivos.push('Status: Pago');
+                    if (filtroStatus === 'a-vencer') filtrosAtivos.push('Status: A Vencer');
+                    if (filtroStatus === 'vencido') filtrosAtivos.push('Status: Vencido');
+                    
+                    if (filtrosAtivos.length > 0) {
+                        titulo.textContent += ` [${filtrosAtivos.join(' + ')}]`;
+                    }
+                }
+                
+                titulo.style.textAlign = 'center';
+                titulo.style.color = '#2c3e50';
+                titulo.style.marginBottom = '10px';
+                titulo.style.fontSize = '18px';
+                relatorioDiv.appendChild(titulo);
+                
+                const data = document.createElement('p');
+                data.textContent = `Emitido em: ${new Date().toLocaleDateString('pt-BR')}`;
+                data.style.textAlign = 'center';
+                data.style.color = '#666';
+                data.style.marginBottom = '20px';
+                data.style.fontSize = '14px';
+                relatorioDiv.appendChild(data);
+                
+                let tabelaHTML = `
+                    <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:20px;">
+                    <thead>
+                        <tr>
+                            <th style="background:#2c3e50; color:white; padding:8px; text-align:left;">Tipo</th>
+                            <th style="background:#2c3e50; color:white; padding:8px; text-align:left;">Vencimento</th>
+                            <th style="background:#2c3e50; color:white; padding:8px; text-align:left;">Valor</th>
+                            <th style="background:#2c3e50; color:white; padding:8px; text-align:left;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+                
+                let totalGeral = 0;
+                let totalAvencer = 0, totalPago = 0, totalVencido = 0;
+                
+                contasMes.forEach(conta => {
+                    const [anoConta, mesConta, diaConta] = conta.data.split('-').map(Number);
+                    const dataFormatada = `${diaConta.toString().padStart(2, '0')}/${mesConta.toString().padStart(2, '0')}/${anoConta}`;
+                    
+                    const valorFormatado = new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(conta.valor);
+                    
+                    const statusText = conta.status === 'a-vencer' ? 'A Vencer' : conta.status === 'pago' ? 'Pago' : 'Vencido';
+                    
+                    totalGeral += conta.valor;
+                    
+                    if (conta.status === 'a-vencer') totalAvencer += conta.valor;
+                    else if (conta.status === 'pago') totalPago += conta.valor;
+                    else totalVencido += conta.valor;
+                    
+                    tabelaHTML += `
+                        <tr>
+                            <td style="padding:6px; border-bottom:1px solid #eee;">${conta.tipo}</td>
+                            <td style="padding:6px; border-bottom:1px solid #eee;">${dataFormatada}</td>
+                            <td style="padding:6px; border-bottom:1px solid #eee;">${valorFormatado}</td>
+                            <td style="padding:6px; border-bottom:1px solid #eee;">${statusText}</td>
+                        </tr>
+                    `;
+                });
+                
+                tabelaHTML += '</tbody></table>';
+                
+                const formatador = (v) => new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(v);
+                
+                tabelaHTML += `
+                    <div style="margin-top:20px; padding:15px; background:#f8f9fa; border-radius:6px; border-left:4px solid #3498db;">
+                        <h4 style="margin:0 0 10px 0; color:#2c3e50;">Resumo do Mês`;
+                
+                if (filtroQuinzena || filtroStatus) {
+                    tabelaHTML += ` (Filtrado)`;
+                }
+                
+                tabelaHTML += `</h4>
+                        <p style="margin:5px 0;"><strong>Total de Contas:</strong> ${contasMes.length}</p>
+                        <p style="margin:5px 0;"><strong>Total A Vencer:</strong> ${formatador(totalAvencer)}</p>
+                        <p style="margin:5px 0;"><strong>Total Pago:</strong> ${formatador(totalPago)}</p>
+                        <p style="margin:5px 0;"><strong>Total Vencido:</strong> ${formatador(totalVencido)}</p>
+                        <p style="margin:5px 0; font-size:16px; font-weight:bold; color:#2c3e50;">
+                            <strong>Valor Total:</strong> ${formatador(totalGeral)}
+                        </p>
+                    </div>
+                `;
+                
+                relatorioDiv.innerHTML += tabelaHTML;
+                
+                const rodape = document.createElement('p');
+                rodape.textContent = 'Controle Financeiro - Relatório gerado automaticamente';
+                rodape.style.textAlign = 'center';
+                rodape.style.color = '#999';
+                rodape.style.marginTop = '20px';
+                rodape.style.fontSize = '11px';
+                relatorioDiv.appendChild(rodape);
+                
+                document.body.appendChild(relatorioDiv);
+                
+                html2canvas(relatorioDiv, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    useCORS: true
+                }).then(canvas => {
+                    canvas.toBlob(function(blob) {
+                        currentReportBlob = blob;
+                        currentReportData = URL.createObjectURL(blob);
+                        
+                        const preview = document.getElementById('reportPreview');
+                        preview.innerHTML = '';
+                        
+                        const img = document.createElement('img');
+                        img.src = currentReportData;
+                        img.style.maxWidth = '100%';
+                        img.style.border = '1px solid #ddd';
+                        img.style.borderRadius = '4px';
+                        
+                        preview.appendChild(img);
+                        preview.style.display = 'block';
+                        
+                        document.getElementById('reportActions').style.display = 'flex';
+                        
+                    }, 'image/jpeg', 0.9);
+                    
+                    document.body.removeChild(relatorioDiv);
+                    
+                }).catch(error => {
+                    console.error('Erro ao gerar relatório:', error);
+                    alert('Erro ao gerar relatório. Tente novamente.');
+                    document.body.removeChild(relatorioDiv);
+                });
+                
+            } catch (error) {
+                console.error('Erro inesperado:', error);
+                alert('Ocorreu um erro inesperado. Tente novamente.');
+            }
+        }
+
+        function baixarRelatorio() {
+            if (!currentReportBlob) {
+                alert('Gere o relatório primeiro.');
+                return;
+            }
+            
+            try {
+                const chaveMesAtual = mesesComContas[mesAtualIndex];
+                const [ano, mes] = chaveMesAtual.split('-').map(Number);
+                const nomeMes = meses[mes];
+                
+                // Adicionar informação sobre filtros no nome do arquivo
+                let filtrosNome = '';
+                if (filtroQuinzena || filtroStatus) {
+                    const filtrosAtivos = [];
+                    if (filtroQuinzena === 'primeira') filtrosAtivos.push('primeira-quinzena');
+                    if (filtroQuinzena === 'segunda') filtrosAtivos.push('segunda-quinzena');
+                    if (filtroStatus === 'pago') filtrosAtivos.push('pago');
+                    if (filtroStatus === 'a-vencer') filtrosAtivos.push('avencer');
+                    if (filtroStatus === 'vencido') filtrosAtivos.push('vencido');
+                    
+                    if (filtrosAtivos.length > 0) {
+                        filtrosNome = `-${filtrosAtivos.join('-')}`;
+                    }
+                }
+                
+                const link = document.createElement('a');
+                link.href = currentReportData;
+                link.download = `relatorio-${nomeMes.toLowerCase()}-${ano}${filtrosNome}.jpg`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('Erro ao baixar:', error);
+                alert('Erro ao baixar relatório. Tente novamente.');
+            }
+        }
+
+        function enviarWhatsApp() {
+            if (!currentReportBlob) {
+                alert('Gere o relatório primeiro.');
+                return;
+            }
+            
+            try {
+                const chaveMesAtual = mesesComContas[mesAtualIndex];
+                const [ano, mes] = chaveMesAtual.split('-').map(Number);
+                const nomeMes = meses[mes];
+                
+                let mensagem = `📊 *Relatório de Contas Financeiras* 📊\n\n` +
+                              `*Mês:* ${nomeMes} ${ano}\n`;
+                
+                // Adicionar informação sobre filtros na mensagem
+                if (filtroQuinzena || filtroStatus) {
+                    const filtrosAtivos = [];
+                    if (filtroQuinzena === 'primeira') filtrosAtivos.push('Primeira Quinzena (1-15)');
+                    if (filtroQuinzena === 'segunda') filtrosAtivos.push('Segunda Quinzena (16-31)');
+                    if (filtroStatus === 'pago') filtrosAtivos.push('Status: Pago');
+                    if (filtroStatus === 'a-vencer') filtrosAtivos.push('Status: A Vencer');
+                    if (filtroStatus === 'vencido') filtrosAtivos.push('Status: Vencido');
+                    
+                    if (filtrosAtivos.length > 0) {
+                        mensagem += `*Filtros:* ${filtrosAtivos.join(' + ')}\n`;
+                    }
+                }
+                
+                mensagem += `*Data do Relatório:* ${new Date().toLocaleDateString('pt-BR')}\n\n` +
+                           `*Controle Financeiro App*`;
+                
+                const telefone = '5511961937763';
+                
+                let nomeArquivo = `relatorio-${nomeMes.toLowerCase()}-${ano}`;
+                if (filtroQuinzena || filtroStatus) {
+                    const filtrosAtivos = [];
+                    if (filtroQuinzena === 'primeira') filtrosAtivos.push('primeira-quinzena');
+                    if (filtroQuinzena === 'segunda') filtrosAtivos.push('segunda-quinzena');
+                    if (filtroStatus === 'pago') filtrosAtivos.push('pago');
+                    if (filtroStatus === 'a-vencer') filtrosAtivos.push('avencer');
+                    if (filtroStatus === 'vencido') filtrosAtivos.push('vencido');
+                    
+                    if (filtrosAtivos.length > 0) {
+                        nomeArquivo += `-${filtrosAtivos.join('-')}`;
+                    }
+                }
+                nomeArquivo += '.jpg';
+                
+                const file = new File([currentReportBlob], nomeArquivo, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        title: `Relatório ${nomeMes} ${ano}`,
+                        text: mensagem,
+                        files: [file]
+                    }).then(() => {
+                        console.log('Relatório compartilhado com sucesso!');
+                    }).catch((error) => {
+                        console.error('Erro ao compartilhar:', error);
+                        abrirWhatsAppFallback(mensagem, telefone, file);
+                    });
+                } else {
+                    abrirWhatsAppFallback(mensagem, telefone, file);
+                }
+                
+            } catch (error) {
+                console.error('Erro ao enviar para WhatsApp:', error);
+                alert('Erro ao enviar para WhatsApp. Tente manualmente: +55 (11) 9 6193-7763');
+            }
+        }
+
+        function abrirWhatsAppFallback(mensagem, telefone, file) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(file);
+            link.download = file.name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                const url = `whatsapp://send?phone=${telefone}&text=${encodeURIComponent(mensagem)}`;
+                window.location.href = url;
+            } else {
+                const url = `https://web.whatsapp.com/send?phone=${telefone}&text=${encodeURIComponent(mensagem)}`;
+                window.open(url, '_blank');
+                
+                alert('Relatório baixado! Agora anexe manualmente a imagem no WhatsApp.');
+            }
+        }
+    </script>
+</body>
+</html>
+<!-- AJUSTE TOPO CENTRALIZADO -->
+<style>
+.header-actions{
+justify-content:center !important;
+align-items:center !important;
+flex-wrap:wrap !important;
+width:100% !important;
+}
+
+#themeToggleBtn{
+width:54px !important;
+height:54px !important;
+border-radius:50% !important;
+background:#1e3a8a !important;
+border:3px solid #60a5fa !important;
+color:#fbbf24 !important;
+display:flex !important;
+align-items:center !important;
+justify-content:center !important;
+}
+
+#logoutBtn{
+margin-left:2px !important;
+}
+</style>
+
+<!-- AJUSTE FINAL: manter lua/sol sempre alinhada na mesma linha dos cartões -->
+<style>
+.header-actions{
+    display:flex !important;
+    justify-content:center !important;
+    align-items:center !important;
+    flex-wrap:nowrap !important;
+    gap:6px !important;
+    width:100% !important;
+}
+
+#themeToggleBtn{
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+    max-width:42px !important;
+    flex:0 0 42px !important;
+    border-radius:50% !important;
+    font-size:16px !important;
+    line-height:1 !important;
+    padding:0 !important;
+    margin:0 0 0 2px !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    box-sizing:border-box !important;
+}
+
+#themeToggleBtn i{
+    font-size:16px !important;
+    line-height:1 !important;
+}
+
+#logoutBtn{
+    width:28px !important;
+    min-width:28px !important;
+    max-width:28px !important;
+    flex:0 0 28px !important;
+    margin:0 2px !important;
+}
+
+@media(max-width:700px){
+    .header-actions{
+        flex-wrap:wrap !important;
+    }
+}
+</style>
+
+<!-- AJUSTE: topo mais à esquerda e valores dos cartões sem duplicação -->
+<style>
+.header-actions{
+    justify-content:flex-start !important;
+    padding-left:0 !important;
+    margin-left:0 !important;
+    width:100% !important;
+}
+
+/* Se algum valor do cartão estiver sendo repetido em spans/divs internos,
+   mantém visível apenas o primeiro valor principal */
+.subtotal-mes-item .value > .value,
+.subtotal-mes-item .value > small,
+.subtotal-mes-item .value > span:not(:first-child),
+.subtotal-mes-item .value + .value,
+.subtotal-mes-item small,
+.subtotal-mes-item .duplicado,
+.subtotal-mes-item .subvalor{
+    display:none !important;
+}
+
+.subtotal-mes-item .value{
+    display:block !important;
+    line-height:1.2 !important;
+    white-space:nowrap !important;
+}
+</style>
+
+<!-- AJUSTES CHATGPT -->
+<style>
+/* Topo alinhado e lua fixa na mesma linha */
+.header-actions{
+    justify-content:flex-start !important;
+    align-items:center !important;
+    flex-wrap:nowrap !important;
+    overflow-x:auto;
+}
+#themeToggleBtn{
+    width:34px !important;
+    height:34px !important;
+    min-width:34px !important;
+    flex:0 0 34px !important;
+    font-size:14px !important;
+}
+#themeToggleBtn i{
+    font-size:14px !important;
+}
+#logoutBtn{
+    min-width:22px !important;
+    flex:0 0 22px !important;
+}
+
+/* Cartões do subtotal menores para celular */
+.subtotal-mes-values{
+    gap:4px !important;
+}
+.subtotal-mes-item{
+    padding:4px !important;
+}
+.subtotal-mes-item .value{
+    font-size:.82rem !important;
+}
+.subtotal-mes-item .label{
+    font-size:.60rem !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+
+  // Remove valores duplicados do tipo "R$ X / R$ X"
+  function corrigirCardsSubtotal(){
+    ['subtotalMesTotal','subtotalMesAvencer','subtotalMesPago','subtotalMesVencido'].forEach(function(id){
+      const el=document.getElementById(id);
+      if(!el) return;
+      const txt=(el.textContent||'').trim();
+      if(txt.includes('/')){
+        el.textContent=txt.split('/')[0].trim();
+      }
+    });
+  }
+
+  corrigirCardsSubtotal();
+  setInterval(corrigirCardsSubtotal,500);
+});
+</script>
